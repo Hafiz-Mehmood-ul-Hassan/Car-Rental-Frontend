@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { authHeaders, BASE_URL } from "../../services/api";
+import { createStripeCheckout } from "../../services/paymentService";
 
 type Booking = {
   id: number;
@@ -17,6 +18,11 @@ export default function MyBookingsPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [reviewBookingId, setReviewBookingId] = useState<number | null>(null);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState("");
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
+  const [reviewMessage, setReviewMessage] = useState("");
 
   useEffect(() => {
     const loadBookings = async () => {
@@ -40,8 +46,15 @@ export default function MyBookingsPage() {
     loadBookings();
   }, []);
 
+  const canRequestReturn = (booking: Booking) => {
+    return booking.status === "ACTIVE" || booking.status === "CONFIRMED" || (booking.status === "PAYMENT_PENDING" && booking.payment?.status === "SUCCESS");
+  };
+
   const requestReturn = async (bookingId: number) => {
     try {
+      // console.log(`all bookings: ${JSON.stringify(bookings)}`);
+      // let carId=bookings.find((booking) => booking.id === bookingId);
+      // console.log(`carId: ${JSON.stringify(carId["carId"])}`);
       const res = await fetch(`${BASE_URL}/bookings/${bookingId}/request-return`, {
         method: "PATCH",
         headers: { ...authHeaders(), "Content-Type": "application/json" },
@@ -51,10 +64,67 @@ export default function MyBookingsPage() {
         setError(data.message || "Unable to request return.");
         return;
       }
-      setBookings((current) => current.map((booking) => (booking.id === bookingId ? data.data : booking)));
+      // setBookings((current) => current.map((booking) => (booking.id === bookingId ? data.data : booking)));
+      setReviewBookingId(bookingId);
+      setReviewRating(5);
+      setReviewComment("");
+      setReviewMessage("");
     } catch (err) {
       console.error(err);
       setError("Unable to request return.");
+    }
+  };
+
+  const submitReview = async () => {
+    if (reviewBookingId === null) return;
+
+    const booking = bookings.find((item) => item.id === reviewBookingId);
+    if (!booking?.car?.title) {
+      setReviewMessage("Car details are missing.");
+      return;
+    }
+
+    setReviewSubmitting(true);
+    setReviewMessage("");
+
+    try {
+      const res = await fetch(`${BASE_URL}/reviews`, {
+        method: "POST",
+        headers: { ...authHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({
+          carId: booking.id,
+          rating: reviewRating,
+          comment: reviewComment,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setReviewMessage(data.message || "Unable to submit review.");
+        return;
+      }
+      setReviewMessage("Thank you! Your review has been submitted.");
+      setReviewBookingId(null);
+      setReviewComment("");
+      setReviewRating(5);
+    } catch (err) {
+      console.error(err);
+      setReviewMessage("Unable to submit review.");
+    } finally {
+      setReviewSubmitting(false);
+    }
+  };
+
+  const payNow = async (bookingId: number) => {
+    try {
+      const data = await createStripeCheckout(bookingId);
+      if (data?.url) {
+        window.location.href = data.url;
+      } else {
+        setError(data?.message || "Unable to start payment.");
+      }
+    } catch (err) {
+      console.error(err);
+      setError("Unable to start payment.");
     }
   };
 
@@ -122,7 +192,15 @@ export default function MyBookingsPage() {
                     <p className="text-slate-400">Booking status</p>
                     <p className="mt-2 text-white">{booking.status.replaceAll("_", " ")}</p>
                   </div>
-                  {booking.status === "ACTIVE" && (
+                  {booking.status === "PAYMENT_PENDING" && (
+                    <button
+                      onClick={() => payNow(booking.id)}
+                      className="mt-3 w-full rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400"
+                    >
+                      Pay now with Stripe
+                    </button>
+                  )}
+                  {canRequestReturn(booking) && (
                     <button
                       onClick={() => requestReturn(booking.id)}
                       className="mt-3 w-full rounded-2xl bg-amber-500 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-400"
@@ -141,6 +219,58 @@ export default function MyBookingsPage() {
           </div>
         )}
       </div>
+
+      {reviewBookingId !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
+          <div className="w-full max-w-md rounded-[2rem] border border-white/10 bg-slate-900 p-6 shadow-2xl shadow-black/40">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm uppercase tracking-[0.25em] text-slate-400">Leave a review</p>
+                <h3 className="mt-2 text-xl font-semibold text-white">How was your trip?</h3>
+              </div>
+              <button onClick={() => setReviewBookingId(null)} className="text-sm text-slate-400 hover:text-white">Close</button>
+            </div>
+
+            <div className="mt-5 space-y-4">
+              <div>
+                <label className="mb-2 block text-sm text-slate-400">Rating</label>
+                <select
+                  value={reviewRating}
+                  onChange={(event) => setReviewRating(Number(event.target.value))}
+                  className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-white"
+                >
+                  {[5, 4, 3, 2, 1].map((value) => (
+                    <option key={value} value={value}>
+                      {value} star{value === 1 ? "" : "s"}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm text-slate-400">Comment</label>
+                <textarea
+                  value={reviewComment}
+                  onChange={(event) => setReviewComment(event.target.value)}
+                  rows={4}
+                  placeholder="Tell us about your experience..."
+                  className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-white"
+                />
+              </div>
+
+              {reviewMessage && <p className="text-sm text-cyan-200">{reviewMessage}</p>}
+
+              <button
+                onClick={submitReview}
+                disabled={reviewSubmitting}
+                className="w-full rounded-2xl bg-cyan-500 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {reviewSubmitting ? "Submitting..." : "Submit review"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -18,6 +18,7 @@ export default function AdminBookingsPage() {
   const [bookings, setBookings] = useState<AdminBooking[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [processingId, setProcessingId] = useState<number | null>(null);
 
   useEffect(() => {
     const loadBookings = async () => {
@@ -41,6 +42,30 @@ export default function AdminBookingsPage() {
     loadBookings();
   }, []);
 
+  const completeReturn = async (bookingId: number) => {
+    setProcessingId(bookingId);
+    try {
+      const res = await fetch(`${ADMIN_BASE}/bookings/${bookingId}/status`, {
+        method: "PATCH",
+        headers: { ...authHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "COMPLETED" }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.message || "Unable to complete return.");
+        return;
+      }
+      setBookings((current) => current.map((booking) => (booking.id === bookingId ? data.data : booking)));
+    } catch (err) {
+      console.error(err);
+      setError("Unable to complete return.");
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const pendingReturns = bookings.filter((booking) => booking.status === "RETURN_REQUESTED");
+
   return (
     <div className="min-h-screen bg-slate-950 text-white py-10 px-4">
       <div className="mx-auto max-w-7xl space-y-8">
@@ -56,6 +81,35 @@ export default function AdminBookingsPage() {
             </span>
           </div>
         </div>
+
+        {pendingReturns.length > 0 && (
+          <div className="rounded-[2rem] border border-amber-500/20 bg-amber-500/10 p-6">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm uppercase tracking-[0.25em] text-amber-300">Pending return requests</p>
+                <h2 className="mt-2 text-xl font-semibold text-white">{pendingReturns.length} request{pendingReturns.length === 1 ? "" : "s"} waiting for admin action</h2>
+              </div>
+            </div>
+            <div className="mt-4 space-y-3">
+              {pendingReturns.map((booking) => (
+                <div key={booking.id} className="flex flex-col gap-3 rounded-2xl border border-amber-500/20 bg-slate-900/80 p-4 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <p className="text-sm text-slate-400">Booking #{booking.id}</p>
+                    <p className="font-semibold text-white">{booking.car?.title || "Car booking"}</p>
+                    <p className="text-sm text-slate-400">Renter: {booking.user?.name || "Unknown"}</p>
+                  </div>
+                  <button
+                    onClick={() => completeReturn(booking.id)}
+                    disabled={processingId === booking.id}
+                    className="rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:opacity-60"
+                  >
+                    {processingId === booking.id ? "Processing..." : "Complete return"}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {loading ? (
           <div className="rounded-3xl border border-white/10 bg-slate-900/80 p-8 text-center text-slate-300">Loading bookings...</div>

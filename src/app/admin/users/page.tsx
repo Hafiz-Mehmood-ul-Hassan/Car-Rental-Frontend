@@ -12,9 +12,6 @@ type User = {
   phone?: string;
 };
 
-
-        console.error("Update failed");
-
   export default function AdminUsersPage() {
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);

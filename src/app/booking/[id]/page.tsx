@@ -4,6 +4,7 @@ import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { Auth } from "../../../lib/auth";
 import { authHeaders, BASE_URL } from "../../../services/api";
+import { createStripeCheckout } from "../../../services/paymentService";
 
 interface Car {
   id: number;
@@ -45,9 +46,8 @@ export default function BookingPage() {
   const [message, setMessage] = useState("");
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [bookingId, setBookingId] = useState<string>("");
-  const [receiptFile, setReceiptFile] = useState<File | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [uploadMessage, setUploadMessage] = useState("");
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [paymentMessage, setPaymentMessage] = useState("");
 
   const totalDays = useMemo(
     () => (pickupDate && returnDate ? calculateDays(pickupDate, returnDate) : 0),
@@ -124,55 +124,41 @@ export default function BookingPage() {
       }
 
       setBookingSuccess(true);
-      setMessage("Booking created successfully. Upload your payment receipt next.");
+      setMessage("Booking created successfully. You can pay now with Stripe.");
     } catch (error) {
       console.error(error);
       setMessage("Failed to create booking. Try again later.");
     }
   };
 
-  const handleReceiptUpload = async () => {
-    setUploadMessage("");
+  const handleStripePayment = async () => {
+    setPaymentMessage("");
 
-    if (!bookingId || !receiptFile) {
-      setUploadMessage("Booking ID and receipt file are required.");
+    if (!bookingId) {
+      setPaymentMessage("Booking ID is missing.");
       return;
     }
 
     const token = Auth.getToken();
     if (!token) {
-      setUploadMessage("Please login first.");
+      setPaymentMessage("Please login first.");
       return;
     }
 
-    setUploading(true);
+    setPaymentLoading(true);
 
     try {
-      const formData = new FormData();
-      formData.append("bookingId", bookingId);
-      formData.append("receipt", receiptFile);
-
-      const response = await fetch(`${BASE_URL}/payments/upload-receipt`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        setUploadMessage(data.message || "Failed to upload receipt.");
-        return;
+      const data = await createStripeCheckout(Number(bookingId));
+      if (data?.url) {
+        window.location.href = data.url;
+      } else {
+        setPaymentMessage(data?.message || "Unable to start Stripe payment.");
       }
-
-      setUploadMessage("Receipt uploaded successfully. Awaiting admin approval.");
     } catch (error) {
       console.error(error);
-      setUploadMessage("Receipt upload failed.");
+      setPaymentMessage("Stripe payment failed.");
     } finally {
-      setUploading(false);
+      setPaymentLoading(false);
     }
   };
 
@@ -329,45 +315,24 @@ export default function BookingPage() {
                 </div>
 
                 <div className="rounded-3xl border border-zinc-800 bg-black/30 p-5">
-                  <p className="text-sm text-zinc-400">Upload your payment receipt</p>
+                  <p className="text-sm text-zinc-400">Pay securely with Stripe</p>
 
                   <div className="mt-4 rounded-3xl border border-cyan-500/10 bg-cyan-500/5 p-4 text-sm text-zinc-300">
-                    <p className="text-zinc-400">Send payment to:</p>
-                    <div className="mt-3 space-y-2">
-                      <p>JazzCash: <span className="text-white">{PAYMENT_DESTINATION.jazzCash}</span></p>
-                      <p>Bank: <span className="text-white">{PAYMENT_DESTINATION.bank}</span></p>
-                      <p>Account No: <span className="text-white">{PAYMENT_DESTINATION.accountNumber}</span></p>
-                      <p>IBAN: <span className="text-white">{PAYMENT_DESTINATION.iban}</span></p>
-                    </div>
-                    <p className="mt-3 text-xs text-zinc-500">After transfer, attach the receipt file below so admin can verify your payment.</p>
+                    <p className="text-zinc-400">Booking ID</p>
+                    <p className="mt-2 text-white">{bookingId}</p>
+                    <p className="mt-3 text-xs text-zinc-500">You will be redirected to Stripe Checkout to complete the payment safely.</p>
                   </div>
 
-                  <input
-                    value={bookingId}
-                    readOnly
-                    className="mt-4 w-full rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-white"
-                  />
-
-                  <label className="mt-4 flex h-14 cursor-pointer items-center justify-center rounded-2xl border border-dashed border-zinc-700 bg-black/30 text-sm text-zinc-300 transition hover:border-cyan-400 hover:text-white">
-                    <input
-                      type="file"
-                      accept="image/*,application/pdf"
-                      onChange={(event) => setReceiptFile(event.target.files?.[0] ?? null)}
-                      className="hidden"
-                    />
-                    {receiptFile ? receiptFile.name : "Select payment receipt"}
-                  </label>
-
                   <button
-                    onClick={handleReceiptUpload}
-                    disabled={uploading}
-                    className="mt-4 w-full rounded-2xl bg-green-500 px-5 py-4 text-base font-semibold text-black transition hover:bg-green-400 disabled:cursor-not-allowed disabled:opacity-60"
+                    onClick={handleStripePayment}
+                    disabled={paymentLoading}
+                    className="mt-4 w-full rounded-2xl bg-emerald-500 px-5 py-4 text-base font-semibold text-black transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    {uploading ? "Uploading receipt..." : "Upload Receipt"}
+                    {paymentLoading ? "Preparing checkout..." : "Pay with Stripe"}
                   </button>
 
-                  {uploadMessage && (
-                    <p className="mt-4 text-sm text-zinc-300">{uploadMessage}</p>
+                  {paymentMessage && (
+                    <p className="mt-4 text-sm text-zinc-300">{paymentMessage}</p>
                   )}
                 </div>
               </div>

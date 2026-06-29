@@ -20,13 +20,36 @@ interface Payment {
     car?: { title?: string };
   };
 }
+
+interface Payout {
+  id: number;
+  ownerId: number;
+  bookingId: number;
+  grossAmount: number;
+  platformFee: number;
+  netAmount: number;
+  status: string;
+  createdAt: string;
+  owner: {
+    id: number;
+    name: string;
+    email: string;
+  };
+  booking: {
+    car?: { title?: string };
+  };
+}
+
 export default function AdminPaymentsPage() {
   const [payments, setPayments] = useState<Payment[]>([]);
+  const [payouts, setPayouts] = useState<Payout[]>([]);
   const [loading, setLoading] = useState(true);
+  const [payoutLoading, setPayoutLoading] = useState<number | null>(null);
   const [actionLoading, setActionLoading] = useState<number | null>(null);
   
   useEffect(() => {
     fetchPayments();
+    fetchPayouts();
   }, []);
   
   const fetchPayments = async () => {
@@ -43,6 +66,18 @@ export default function AdminPaymentsPage() {
     setLoading(false);
   };
 
+  const fetchPayouts = async () => {
+    try {
+      const res = await fetch(`${ADMIN_BASE}/payouts/pending`, { headers: authHeaders() });
+      const data = await res.json();
+      if (res.ok) {
+        setPayouts(data.data || []);
+      }
+    } catch (err) {
+      console.log(err);
+    }
+  };
+
   const doAction = async (id: number, action: "approve" | "reject") => {
     setActionLoading(id);
     try {
@@ -53,6 +88,7 @@ export default function AdminPaymentsPage() {
 
       if (res.ok) {
         fetchPayments();
+        fetchPayouts();
       } else {
         const data = await res.json();
         alert(data.message || "Action failed");
@@ -62,6 +98,27 @@ export default function AdminPaymentsPage() {
       alert("Server error");
     }
     setActionLoading(null);
+  };
+
+  const markPayoutPaid = async (id: number) => {
+    setPayoutLoading(id);
+    try {
+      const res = await fetch(`${ADMIN_BASE}/payouts/${id}/mark-paid`, {
+        method: "PATCH",
+        headers: authHeaders(),
+      });
+
+      if (res.ok) {
+        fetchPayouts();
+      } else {
+        const data = await res.json();
+        alert(data.message || "Payout update failed");
+      }
+    } catch (err) {
+      console.log(err);
+      alert("Server error");
+    }
+    setPayoutLoading(null);
   };
   
   return (
@@ -77,6 +134,53 @@ export default function AdminPaymentsPage() {
               {payments.length} pending
             </span>
           </div>
+        </div>
+
+        <div className="rounded-[2rem] border border-white/10 bg-slate-900/80 p-8 shadow-2xl shadow-black/40 backdrop-blur-xl">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-2xl font-semibold">Owner Payouts</h2>
+              <p className="mt-2 text-slate-400">Mark owner earnings as paid after you give the payout manually.</p>
+            </div>
+            <span className="rounded-3xl bg-amber-500/10 px-4 py-2 text-sm text-amber-200 ring-1 ring-amber-500/20">
+              {payouts.length} pending payout{payouts.length === 1 ? "" : "s"}
+            </span>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          {payouts.length === 0 ? (
+            <div className="rounded-3xl border border-dashed border-white/10 bg-slate-900/80 p-10 text-center text-slate-400">
+              No owner payouts pending yet. Approve a completed booking payment first to create one.
+            </div>
+          ) : (
+            payouts.map((payout) => (
+              <div key={payout.id} className="grid gap-4 rounded-[2rem] border border-white/10 bg-slate-900/80 p-6 shadow-lg shadow-black/20 sm:grid-cols-[1.1fr_0.9fr]">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <p className="text-sm uppercase tracking-[0.25em] text-slate-500">Booking #{payout.bookingId}</p>
+                      <h3 className="mt-1 text-xl font-semibold text-white">{payout.booking?.car?.title || "Car booking"}</h3>
+                    </div>
+                    <StatusPill status={payout.status} />
+                  </div>
+                  <p className="text-sm text-slate-400">Owner: {payout.owner.name} • {payout.owner.email}</p>
+                  <p className="text-sm text-slate-400">Gross: PKR {payout.grossAmount.toFixed(0)} • Fee: PKR {payout.platformFee.toFixed(0)}</p>
+                  <p className="text-sm text-slate-400">Net amount to owner: PKR {payout.netAmount.toFixed(0)}</p>
+                  <p className="text-sm text-slate-400">Created: {new Date(payout.createdAt).toLocaleString()}</p>
+                </div>
+                <div className="flex flex-col justify-between gap-3">
+                  <button
+                    onClick={() => markPayoutPaid(payout.id)}
+                    disabled={payoutLoading === payout.id}
+                    className="rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-700"
+                  >
+                    {payoutLoading === payout.id ? "Updating..." : "Mark payout paid"}
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
         </div>
 
         {loading ? (
