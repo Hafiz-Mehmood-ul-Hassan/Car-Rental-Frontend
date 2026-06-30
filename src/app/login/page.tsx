@@ -61,13 +61,15 @@ export default function LoginPage() {
         Auth.set(token, authUser);
         document.cookie = `token=${token}; path=/; max-age=${60 * 60 * 24}; samesite=lax`;
 
-        console.log("USER INFO:", authUser);
-
+        // console.log("USER INFO:", authUser);
+        
         if (authUser.role === "ADMIN") {
           router.push("/admin");
+          window.location.reload();
         } else {
           console.log("Redirecting to dashboard...");
           router.push("/dashboard");
+          window.location.reload();
         }
       } else {
         setMessage(data.message || "Login failed");
