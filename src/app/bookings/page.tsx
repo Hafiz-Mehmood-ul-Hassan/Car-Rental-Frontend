@@ -10,6 +10,7 @@ type Booking = {
   totalPrice: number;
   startDate: string;
   endDate: string;
+  carId: number;
   car?: { title?: string };
   payment?: { status: string; receiptUrl?: string };
 };
@@ -92,7 +93,7 @@ export default function MyBookingsPage() {
         method: "POST",
         headers: { ...authHeaders(), "Content-Type": "application/json" },
         body: JSON.stringify({
-          carId: booking.id,
+          carId: booking.carId,
           rating: reviewRating,
           comment: reviewComment,
         }),
