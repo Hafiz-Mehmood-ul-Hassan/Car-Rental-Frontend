@@ -64,12 +64,11 @@ export default function LoginPage() {
         // console.log("USER INFO:", authUser);
         
         if (authUser.role === "ADMIN") {
-          router.push("/admin");
-          window.location.reload();
+          console.log("Redirecting to admin dashboard...");
+          window.location.assign("/admin");
         } else {
           console.log("Redirecting to dashboard...");
-          router.push("/dashboard");
-          window.location.reload();
+          window.location.assign("/dashboard");
         }
       } else {
         setMessage(data.message || "Login failed");
