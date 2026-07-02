@@ -71,7 +71,9 @@ export default function AdminDashboard() {
 
         reviewsTotal:
           dashboardData.data?.totalReviews || 0,
-      });
+        earningsTotal:
+          dashboardData.data?.ownerEarnings || 0,
+              });
     } catch (err) {
       console.error("Failed to fetch admin stats", err);
     }
@@ -127,6 +129,13 @@ export default function AdminDashboard() {
       href: "/admin/reviews",
       accent: "text-pink-400",
     },
+    {
+      key: "earnings",
+      label: "Owner Earnings",
+      count: stats.earningsTotal || 0, // or total earning records
+      href: "/admin/earnings",
+      accent: "text-emerald-400",
+},
   ];
 
   return (
@@ -142,6 +151,12 @@ export default function AdminDashboard() {
             >
               KYC
             </Link>
+            <Link
+                href="/admin/earnings"
+                className="px-3 py-2 rounded bg-zinc-900 hover:bg-zinc-800"
+                >
+                Earnings
+              </Link>
 
             <Link
               href="/admin/cars"
@@ -229,6 +244,12 @@ export default function AdminDashboard() {
             >
               Payments
             </Link>
+            <Link
+                href="/admin/earnings"
+                className="px-4 py-2 rounded bg-emerald-600 text-black"
+              >
+                Owner Earnings
+              </Link>
 
             <Link
               href="/admin/users"
