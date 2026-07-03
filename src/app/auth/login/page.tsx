@@ -3,8 +3,8 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Auth } from "../../lib/auth";
-import { BASE_URL } from "../../services/api";
+import { Auth } from "../../../lib/auth";
+import { BASE_URL } from "../../../services/api";
 
 export default function LoginPage() {
   const router = useRouter();

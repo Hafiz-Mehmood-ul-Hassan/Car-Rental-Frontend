@@ -91,21 +91,28 @@ const handleReceipt = (
 
   try {
     setProcessing(true);
+    const formData = new FormData();
 
+    formData.append("ownerId", selectedEarning.owner.id.toString());
+    formData.append("amount", amount.toString());
+    formData.append("method", method);
+    formData.append("referenceNo", referenceNo);
+    formData.append("notes", notes);
+
+    if (receiptFile) {
+      formData.append("receipt", receiptFile);
+    }
+    console.log(receiptFile);
     const res = await fetch(`${ADMIN_BASE}/payouts`, {
-      method: "POST",
-      headers: {
-        ...authHeaders(),
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        ownerId: selectedEarning.owner.id,
-        amount,
-        method,
-        referenceNo,
-        notes,
-      }),
+  method: "POST",
+  headers: {
+    Authorization: authHeaders().Authorization,
+  },
+  body: formData,
     });
+
+
+
 
     const data = await res.json();
 
@@ -135,6 +142,7 @@ const handleReceipt = (
       </div>
     );
   }
+  
 
   return (
     <div className="min-h-screen bg-slate-950 p-8 text-white">

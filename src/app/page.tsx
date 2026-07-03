@@ -24,14 +24,14 @@ export default function HomePage() {
           </Link>
 
           <Link
-            href="/login"
+            href="/auth/login"
             className="border border-gray-500 px-6 py-3 rounded-lg hover:bg-gray-800 transition"
           >
             Login
           </Link>
 
           <Link
-            href="/register"
+            href="/auth/register"
             className="bg-white text-black px-6 py-3 rounded-lg font-semibold hover:bg-gray-200 transition"
           >
             Register

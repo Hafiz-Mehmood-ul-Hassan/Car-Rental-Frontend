@@ -24,7 +24,7 @@ export default function RootHeader() {
     document.cookie = "token=; path=/; max-age=0; samesite=lax";
     setUser(null);
     setIsLoggedIn(false);
-    router.push("/login");
+    router.push("auth/login");
   };
 
   return (
@@ -71,14 +71,14 @@ export default function RootHeader() {
           ) : (
             <>
               <Link
-                href="/login"
+                href="/auth/login"
                 className="hover:text-blue-400"
               >
                 Login
               </Link>
 
               <Link
-                href="/register"
+                href="/auth/register"
                 className="hover:text-blue-400"
               >
                 Register
