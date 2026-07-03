@@ -34,7 +34,7 @@ export default function RouteGuard({
 			const token = Auth.getToken();
 			const user = Auth.getUser();
 
-			const PUBLIC_ROUTES = ["/", "/login", "/register", "/cars"];
+			const PUBLIC_ROUTES = ["/", "/auth/login", "/auth/register", "/cars", "/auth/forgot-password", "/auth/verify/register"];
 			const path = pathname;
 
 			const isCarDetail = /^\/cars\/\d+$/.test(path);
@@ -47,8 +47,8 @@ export default function RouteGuard({
 
 			// NOT LOGGED IN -> redirect to login (but don't loop if already on login)
 			if (!token || !user) {
-				if (path !== "/login") {
-					router.replace("/login");
+				if (path !== "/auth/login") {
+					router.replace("auth/login");
 					return;
 				}
 
