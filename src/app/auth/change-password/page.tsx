@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Auth } from "../../lib/auth";
+import { Auth } from "../../../lib/auth";
 import { BASE_URL, authHeaders } from "../../../services/api";
 
 export default function ChangePasswordPage() {
