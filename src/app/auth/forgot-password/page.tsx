@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { BASE_URL } from "../../services/api";
+import { BASE_URL } from "../../../services/api";
 import Link from "next/link";
 
 export default function ForgotPasswordPage() {
