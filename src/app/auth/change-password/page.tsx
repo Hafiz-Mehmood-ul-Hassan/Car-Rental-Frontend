@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Auth } from "../../lib/auth";
-import { BASE_URL, authHeaders } from "../../services/api";
+import { BASE_URL, authHeaders } from "../../../services/api";
 
 export default function ChangePasswordPage() {
   const [form, setForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
